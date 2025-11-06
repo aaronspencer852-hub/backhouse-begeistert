@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Back House Begeistert · v4.3</title>
+  <title>Back House Begeistert · v4.4</title>
   <meta name="theme-color" content="#111827"/>
-  <link rel="manifest" href="/public/manifest.webmanifest?v=43"/>
+  <link rel="manifest" href="/public/manifest.webmanifest?v=44"/>
   <link rel="icon" href="/public/icons/icon-192.png"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -15,15 +15,44 @@
 </head>
 <body>
   <div id="root"></div>
+
   <script type="text/babel">
-    const {useState,useEffect} = React;
+    const {useState, useEffect} = React;
     const cls=(...c)=>c.filter(Boolean).join(" ");
     const Button=({children,className,...p})=>(<button className={cls("px-4 py-2 rounded-2xl shadow-sm border hover:shadow transition text-sm font-medium",className)} {...p}>{children}</button>);
     const Card=({children,className,onClick})=>(<div onClick={onClick} className={cls("rounded-2xl border shadow-sm p-4 bg-white",className)}>{children}</div>);
     const Input=(p)=>(<input {...p} className={cls("w-full border rounded-xl px-3 py-2 outline-none focus:ring",p.className)} />);
-    const Select=({options,value,onChange,className})=>(<select value={value} onChange={onChange} className={cls("w-full border rounded-xl px-3 py-2",className)}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select>);
+    const Select=({options,value,onChange,className})=>(
+      <select value={value} onChange={onChange} className={cls("w-full border rounded-xl px-3 py-2",className)}>
+        {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    );
+
+    // --- Datos fijos (restaurantes/outlets y usuarios) ---
     const RESTS=[
-      {id:1, name:"Bistro Service 1/2"},{id:2, name:"Bistro Service 3"},{id:3, name:"Bistro Service 4/5"},{id:4, name:"Bistro Service 6/7"},{id:5, name:"Bistro Service 7"},{id:6, name:"Bistro Service 8/9"},{id:7, name:"Bistro Halle 9"},{id:8, name:"Bistro Halle 12"},{id:9, name:"Bistro Halle 3A (1. OG)"},{id:10, name:"Café Point Mitte"},{id:11, name:"Café Point Ost"},{id:12, name:"Café Point Halle 3C (1. OG)"},{id:13, name:"Café Point 5/6"},{id:14, name:"Restaurant Süd (1. OG)"},{id:15, name:"Restaurant Süd-Ost"},{id:16, name:"Restaurant SB-Nord (1. OG)"},{id:17, name:"Restaurant Behaims"},{id:18, name:"Restaurant West (1. OG)"},{id:19, name:"Restaurant Vasco da Gama (1. OG)"},{id:20, name:"Restaurant Marco Polo (3. OG)"},{id:21, name:"Abholmarkt / Pick-up Station"}];
+      {id:1, name:"Bistro Service 1/2"},
+      {id:2, name:"Bistro Service 3"},
+      {id:3, name:"Bistro Service 4/5"},
+      {id:4, name:"Bistro Service 6/7"},
+      {id:5, name:"Bistro Service 7"},
+      {id:6, name:"Bistro Service 8/9"},
+      {id:7, name:"Bistro Halle 9"},
+      {id:8, name:"Bistro Halle 12"},
+      {id:9, name:"Bistro Halle 3A (1. OG)"},
+      {id:10, name:"Café Point Mitte"},
+      {id:11, name:"Café Point Ost"},
+      {id:12, name:"Café Point Halle 3C (1. OG)"},
+      {id:13, name:"Café Point 5/6"},
+      {id:14, name:"Restaurant Süd (1. OG)"},
+      {id:15, name:"Restaurant Süd-Ost"},
+      {id:16, name:"Restaurant SB-Nord (1. OG)"},
+      {id:17, name:"Restaurant Behaims"},
+      {id:18, name:"Restaurant West (1. OG)"},
+      {id:19, name:"Restaurant Vasco da Gama (1. OG)"},
+      {id:20, name:"Restaurant Marco Polo (3. OG)"},
+      {id:21, name:"Abholmarkt / Pick-up Station"},
+    ];
+
     const USERS=[
       {user:"baljit", name:"Baljit Sighn", role:"Putzenkraft"},
       {user:"sabrina", name:"Sabrina Wurzbacher", role:"Putzenkraft"},
@@ -31,32 +60,512 @@
       {user:"roman", name:"Roman Domjanic", role:"Supervisor"},
       {user:"svetlana", name:"Svetlana Frank", role:"Supervisor"},
     ];
-    const SUBTASKS=["Bodenreinigung","Reinigung der Küchenoberflächen","Reinigung der Toiletten","Reinigung & Entfettung"];
-    const todayISO=()=>new Date().toISOString().slice(0,10);
+
+    // Subtareas estándar (alemán)
+    const SUBTASKS=[
+      "Bodenreinigung",
+      "Reinigung der Küchenoberflächen",
+      "Reinigung der Toiletten",
+      "Reinigung & Entfettung"
+    ];
+
+    const todayISO=()=> new Date().toISOString().slice(0,10);
+
+    // -----------------------------
+    // APP
+    // -----------------------------
     function App(){
       const [role,setRole]=useState(localStorage.getItem("bhb_role")||"");
       const [auth,setAuth]=useState(()=>{const r=localStorage.getItem("bhb_auth"); return r?JSON.parse(r):null});
       const [tasks,setTasks]=useState(()=>{const r=localStorage.getItem("bhb_tasks"); return r?JSON.parse(r):[]});
-      const [events,setEvents]=useState(()=>{const r=localStorage.getItem("bhb_events"); return r?JSON.parse(r):[{id:"E1", name:"BIOFACH", start:"2026-02-11", end:"2026-02-14"},{id:"E2", name:"Embedded World", start:"2026-03-11", end:"2026-03-13"},{id:"E3", name:"SPS", start:"2026-11-17", end:"2026-11-19", sps:true}]});
+      const [events,setEvents]=useState(()=>{
+        const r=localStorage.getItem("bhb_events");
+        return r?JSON.parse(r):[
+          {id:"E1", name:"BIOFACH", start:"2026-02-11", end:"2026-02-14"},
+          {id:"E2", name:"Embedded World", start:"2026-03-11", end:"2026-03-13"},
+          {id:"E3", name:"SPS", start:"2026-11-17", end:"2026-11-19", sps:true},
+        ];
+      });
       const [eventOutlets,setEventOutlets]=useState(()=>{const r=localStorage.getItem("bhb_event_outlets"); return r?JSON.parse(r):{}});
+      const [tickets,setTickets]=useState(()=>{const r=localStorage.getItem("bhb_tickets"); return r?JSON.parse(r):[]});
       const [showData,setShowData]=useState(false);
+
       useEffect(()=>localStorage.setItem("bhb_role",role),[role]);
       useEffect(()=>localStorage.setItem("bhb_auth",JSON.stringify(auth)),[auth]);
       useEffect(()=>localStorage.setItem("bhb_tasks",JSON.stringify(tasks)),[tasks]);
       useEffect(()=>localStorage.setItem("bhb_events",JSON.stringify(events)),[events]);
       useEffect(()=>localStorage.setItem("bhb_event_outlets",JSON.stringify(eventOutlets)),[eventOutlets]);
-      const taskFactory=({date,restId,level,assignees=[],kind})=>({id:"T"+Date.now()+"_"+Math.random().toString(36).slice(2,7),date,restId,level,assignees,kind,title:"Reinigung "+(RESTS.find(r=>r.id===restId)?.name||""),status:"Offen",timeStart:"",timeEnd:"",checklist:SUBTASKS.map(txt=>({txt,done:false}))});
-      if(!role){return(<div className="min-h-screen grid place-items-center p-6"><Card className="w-full max-w-md"><div className="text-2xl font-bold mb-4">Back House Begeistert · v4.3</div><div className="grid gap-3"><Button className="bg-gray-800 text-white" onClick={()=>setRole("Supervisor")}>Supervisor</Button><Button onClick={()=>setRole("Putzenkraft")}>Ich bin Reinigungskraft</Button></div></Card></div>);}
+      useEffect(()=>localStorage.setItem("bhb_tickets",JSON.stringify(tickets)),[tickets]);
+
+      const taskFactory=({date,restId,level,assignees=[],kind})=>({
+        id:"T"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+        date, restId, level, assignees, kind,
+        title:"Reinigung "+(RESTS.find(r=>r.id===restId)?.name||""),
+        status:"Offen",
+        timeStart:"", timeEnd:"",
+        checklist: SUBTASKS.map(txt=>({txt,done:false}))
+      });
+
+      if(!role){
+        return (
+          <div className="min-h-screen grid place-items-center p-6">
+            <Card className="w-full max-w-md">
+              <div className="text-2xl font-bold mb-4">Back House Begeistert · v4.4</div>
+              <div className="grid gap-3">
+                <Button className="bg-gray-800 text-white" onClick={()=>setRole("Supervisor")}>Supervisor</Button>
+                <Button onClick={()=>setRole("Putzenkraft")}>Ich bin Reinigungskraft</Button>
+              </div>
+            </Card>
+          </div>
+        );
+      }
+
       if(!auth) return <Auth role={role} onLogin={setAuth}/>;
-      return (<div className="min-h-screen bg-gray-50 text-gray-800"><header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b"><div className="max-w-6xl mx-auto p-4 flex items-center gap-3"><div className="w-9 h-9 rounded-full bg-gray-800 text-white grid place-items-center text-sm">BHB</div><div className="font-semibold">Back House Begeistert · v4.3</div><img src="/public/logo.svg?v=43" alt="Logo" className="h-7 ml-2"/><div className="ml-auto flex items-center gap-3 text-sm"><span className="px-2 py-1 rounded-full bg-gray-100 border">{auth.name} · {auth.role}</span>{role==="Supervisor" && <Button onClick={()=>setShowData(true)}>Daten exportieren</Button>}<Button className="bg-gray-800 text-white" onClick={()=>{setAuth(null); setRole("");}}>Abmelden</Button></div></div></header><main className="max-w-6xl mx-auto p-4 grid gap-6">{role==="Supervisor"?(<SupervisorHome tasks={tasks} setTasks={setTasks} events={events} eventOutlets={eventOutlets} setEventOutlets={setEventOutlets} taskFactory={taskFactory}/>):(<EmployeeHome auth={auth} tasks={tasks} setTasks={setTasks}/>)}</main>{showData && <DataModal tasks={tasks} onClose={()=>setShowData(false)} />}</div>);}
-    function Auth({role,onLogin}){const [user,setUser]=useState(""); const [pass,setPass]=useState(""); const [err,setErr]=useState(""); const list=USERS.filter(u=> role==="Supervisor"? u.role==="Supervisor": u.role!=="Supervisor"); const handle=()=>{const u=list.find(x=>x.user===user.trim().toLowerCase()); if(!u){setErr("Benutzername nicht gefunden"); return;} onLogin(u);} ; const ph=role==="Supervisor"?"maikel / roman / svetlana":"baljit / sabrina"; return(<div className="min-h-screen grid place-items-center p-6"><Card className="w-full max-w-sm"><div className="text-center mb-4"><div className="text-xl font-bold">Anmelden · {role}</div></div><div className="grid gap-3"><div><label className="text-xs">Benutzername</label><Input value={user} onChange={e=>setUser(e.target.value)} placeholder={ph}/></div><div><label className="text-xs">Passwort</label><Input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••"/></div>{err && <div className="text-red-600 text-xs">{err}</div>}<Button className="bg-gray-800 text-white" onClick={handle}>Anmelden</Button></div></Card></div>);}
-    function EventList({events,title,color,onPlanPre,onPlanPost}){const badge=color==='green'?'bg-green-600':color==='yellow'?'bg-yellow-500':'bg-gray-400'; if(events.length===0) return null; return(<Card><div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold">{title}</div><div className={"w-3 h-3 rounded-full "+badge}></div></div><div className="grid gap-2">{events.map(ev=>(<div key={ev.id} className="border rounded-xl p-3 flex items-center justify-between"><div><div className="font-medium">{ev.name}</div><div className="text-xs text-gray-500">{ev.start} → {ev.end}</div></div><div className="flex gap-2">{onPlanPre && <Button onClick={()=>onPlanPre(ev)}>Vorreinigung planen</Button>}{onPlanPost && <Button className="bg-gray-800 text-white" onClick={()=>onPlanPost(ev)}>Nachreinigung planen</Button>}</div></div>))}</div></Card>);}
-    function PlanModal({ev,type,remembered,defaultDate,onClose,onSave}){const [date,setDate]=useState(defaultDate||todayISO()); const [level,setLevel]=useState("Normal"); const [sel,setSel]=useState(()=> (remembered?.map(String)||[])); const [assignees,setAssignees]=useState([]); const toggleSel=(id)=> setSel(s=> s.includes(String(id))? s.filter(x=>x!==String(id)) : [...s,String(id)]); const toggleA=(u)=> setAssignees(a=> a.includes(u)? a.filter(x=>x!==u) : [...a,u]); return(<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50"><Card className="w-full max-w-2xl"><div className="flex items-center justify-between mb-2"><div className="font-semibold">{type==='pre'?'Vorreinigung':'Nachreinigung'} · {ev.name}</div><button onClick={onClose} className="text-xl">×</button></div><div className="grid md:grid-cols-2 gap-4"><div><label className="text-xs">Datum</label><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div><div><label className="text-xs">Level</label><Select value={level} onChange={e=>setLevel(e.target.value)} options={[{label:"Normal",value:"Normal"},{label:"Rápida",value:"Rápida"},{label:"Profunda",value:"Profunda"}]}/></div><div className="md:col-span-2"><div className="text-xs mb-1">Outlets wählen</div><div className="grid md:grid-cols-2 gap-2 max-h-56 overflow-auto border rounded-xl p-2">{RESTS.map(r=>(<label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={sel.includes(String(r.id))} onChange={()=>toggleSel(r.id)}/><span>{r.name}</span></label>))}</div></div><div className="md:col-span-2"><div className="text-xs mb-1">Mitarbeiter auswählen</div><div className="flex flex-wrap gap-2">{USERS.filter(u=>u.role!=="Supervisor").map(u=>(<button key={u.user} onClick={()=>toggleA(u.user)} className={cls("text-xs px-2 py-1 rounded-full border", assignees.includes(u.user)?"bg-gray-800 text-white":"")}>+ {u.name}</button>))}</div></div></div><div className="mt-3 flex justify-end gap-2"><Button onClick={onClose}>Abbrechen</Button><Button className="bg-gray-800 text-white" onClick={()=>onSave({date,level,outlets:sel.map(Number),assignees})}>Aufgaben erstellen</Button></div></Card></div>);}
-    function SupervisorHome({tasks,setTasks,events,eventOutlets,setEventOutlets,taskFactory}){const [modal,setModal]=useState(null); const today=todayISO(); const current=events.filter(e=>e.start<=today && today<=e.end); const past=events.filter(e=>e.end<today); const future=events.filter(e=>e.start>today); const openPre=(ev)=> setModal({ev,type:"pre",remembered:eventOutlets[ev.id]||[],defaultDate:ev.start}); const openPost=(ev)=>{const d=new Date(ev.end); d.setDate(d.getDate()+1); setModal({ev,type:"post",remembered:eventOutlets[ev.id]||[],defaultDate:d.toISOString().slice(0,10)});}; const savePlan=({date,level,outlets,assignees})=>{const {ev,type}=modal; setEventOutlets(prev=>({...prev,[ev.id]:outlets})); const kind=type==="pre"?"Vorreinigung":"Nachreinigung"; const newTasks=outlets.map(rid=> taskFactory({date,restId:rid,level,assignees,kind})); setTasks([...newTasks,...tasks]); setModal(null); alert(`${newTasks.length} Aufgaben erstellt (${kind})`);}; return(<div className="grid md:grid-cols-3 gap-4"><EventList events={current} title="Im Moment" color="green" onPlanPost={openPost}/><EventList events={past} title="Vergangenheit" color="gray" onPlanPost={openPost}/><EventList events={future} title="Zukunft" color="yellow" onPlanPre={openPre}/>{modal && <PlanModal {...modal} onClose={()=>setModal(null)} onSave={savePlan}/>}</div>);}
-    function EmployeeHome({auth,tasks,setTasks}){const my=tasks.filter(t=>(t.assignees||[]).includes(auth.user)); const [selected,setSelected]=useState(null); const setField=(task,patch)=> setTasks(tasks.map(t=> t.id===task.id? {...t,...patch}: t)); const toggleCheck=(task,idx)=> setTasks(tasks.map(t=> t.id===task.id? {...t, checklist: t.checklist.map((c,i)=> i===idx? {...c,done:!c.done}: c)}: t)); return(<div className="grid gap-6"><Card><div className="font-semibold mb-2">Meine Aufgaben</div><div className="grid gap-2">{my.length===0 && <div className="text-sm text-gray-500">Keine Aufgaben</div>}{my.map(t=>(<div key={t.id} className="border rounded-xl p-3 flex items-center justify-between"><div><div className="font-medium">{t.title}</div><div className="text-xs text-gray-500">{t.date} · {t.level}</div></div><div className="flex gap-2"><Button onClick={()=>setSelected(t)}>Öffnen</Button><Button className="bg-green-600 text-white" onClick={()=>setField(t,{status:"Erledigt"})}>Fertig</Button></div></div>))}</div></Card>{selected && (<Card><div className="font-semibold">{selected.title}</div><div className="grid md:grid-cols-3 gap-2 my-2"><div><label className="text-xs">Datum</label><Input type="date" value={selected.date} onChange={e=>setField(selected,{date:e.target.value})}/></div><div><label className="text-xs">Startzeit</label><Input type="time" value={selected.timeStart} onChange={e=>setField(selected,{timeStart:e.target.value})}/></div><div><label className="text-xs">Endzeit</label><Input type="time" value={selected.timeEnd} onChange={e=>setField(selected,{timeEnd:e.target.value})}/></div></div><div className="grid gap-2">{selected.checklist.map((c,i)=>(<label key={i} className="flex items-center gap-2 border rounded-xl p-2"><input type="checkbox" checked={!!c.done} onChange={()=>toggleCheck(selected,i)} /><span className="text-sm">{c.txt}</span></label>))}</div></Card>)}</div>);}
-    function DataModal({tasks,onClose}){const [filterRest,setFilterRest]=useState("all"); const [filterUser,setFilterUser]=useState("all"); const [from,setFrom]=useState(""); const [to,setTo]=useState(""); const exportCSV=()=>{const inRange=(d)=>{ if(from && d<from) return false; if(to && d>to) return false; return true; }; function toCSVCell(s){return '"' + String(s).replaceAll('"',"''") + '"';} const filtered=tasks.filter(t=> (filterRest==='all'||String(t.restId)===String(filterRest)) && (filterUser==='all'||(t.assignees||[]).includes(filterUser)) && inRange(t.date)); const header="Datum,Startzeit,Endzeit,Mitarbeiter,Ort,Aktivität,ChecklistErledigt"; const rows=filtered.map(t=>{const mit=(t.assignees||[]).map(u=> (USERS.find(x=>x.user===u)?.name||u)).join('; '); const ort=RESTS.find(r=>r.id===t.restId)?.name||''; const aktiv=t.title; const done=(t.checklist||[]).filter(c=>c.done).map(c=>c.txt).join(';'); return [t.date,t.timeStart||'',t.timeEnd||'',toCSVCell(mit),toCSVCell(ort),toCSVCell(aktiv),toCSVCell(done)].join(',');}); const csv=[header,...rows].join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backhouse_report.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);}; return(<div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50"><Card className="w-full max-w-3xl"><div className="flex items-center justify-between mb-2"><div className="font-semibold">Daten exportieren (CSV) · v4.3</div><button onClick={onClose} className="text-xl">×</button></div><div className="grid gap-2 md:grid-cols-5"><div><label className="text-xs">Von</label><Input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div><div><label className="text-xs">Bis</label><Input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div><div><label className="text-xs">Outlet</label><select className="border rounded px-2 py-2 w-full" value={filterRest} onChange={e=>setFilterRest(e.target.value)}><option value="all">Alle</option>{RESTS.map(r=>(<option key={r.id} value={r.id}>{r.name}</option>))}</select></div><div><label className="text-xs">Mitarbeiter</label><select className="border rounded px-2 py-2 w-full" value={filterUser} onChange={e=>setFilterUser(e.target.value)}><option value="all">Alle</option>{USERS.filter(u=>u.role!=='Supervisor').map(u=>(<option key={u.user} value={u.user}>{u.name}</option>))}</select></div><div className="flex items-end"><Button className="bg-gray-800 text-white w-full" onClick={exportCSV}>CSV herunterladen</Button></div></div></Card></div>);}
+
+      return (
+        <div className="min-h-screen bg-gray-50 text-gray-800">
+          <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+            <div className="max-w-6xl mx-auto p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-gray-800 text-white grid place-items-center text-sm">BHB</div>
+              <div className="font-semibold">Back House Begeistert · v4.4</div>
+              <img src="/public/logo.svg?v=44" alt="Logo" className="h-7 ml-2"/>
+              <div className="ml-auto flex items-center gap-3 text-sm">
+                <span className="px-2 py-1 rounded-full bg-gray-100 border">{auth.name} · {auth.role}</span>
+                {role==="Supervisor" && <Button onClick={()=>setShowData(true)}>Daten exportieren</Button>}
+                <Button className="bg-gray-800 text-white" onClick={()=>{setAuth(null); setRole("");}}>Abmelden</Button>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto p-4 grid gap-6">
+            {role==="Supervisor" ? (
+              <SupervisorView
+                tasks={tasks} setTasks={setTasks}
+                events={events} setEvents={setEvents}
+                eventOutlets={eventOutlets} setEventOutlets={setEventOutlets}
+                tickets={tickets} setTickets={setTickets}
+                taskFactory={taskFactory}
+              />
+            ) : (
+              <EmployeeView auth={auth} tasks={tasks} setTasks={setTasks}/>
+            )}
+          </main>
+
+          {showData && <DataModal tasks={tasks} onClose={()=>setShowData(false)} />}
+        </div>
+      );
+    }
+
+    // -----------------------------
+    // Auth
+    // -----------------------------
+    function Auth({role,onLogin}){
+      const [user,setUser]=useState(""); const [pass,setPass]=useState(""); const [err,setErr]=useState("");
+      const list=USERS.filter(u=> role==="Supervisor"? u.role==="Supervisor" : u.role!=="Supervisor");
+      const handle=()=>{ const u=list.find(x=>x.user===user.trim().toLowerCase()); if(!u){setErr("Benutzername nicht gefunden"); return;} onLogin(u); };
+      const ph = role==="Supervisor" ? "maikel / roman / svetlana" : "baljit / sabrina";
+      return (
+        <div className="min-h-screen grid place-items-center p-6">
+          <Card className="w-full max-w-sm">
+            <div className="text-center mb-4"><div className="text-xl font-bold">Anmelden · {role}</div></div>
+            <div className="grid gap-3">
+              <div><label className="text-xs">Benutzername</label><Input value={user} onChange={e=>setUser(e.target.value)} placeholder={ph} /></div>
+              <div><label className="text-xs">Passwort</label><Input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••" /></div>
+              {err && <div className="text-red-600 text-xs">{err}</div>}
+              <Button className="bg-gray-800 text-white" onClick={handle}>Anmelden</Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // -----------------------------
+    // Vista Supervisor
+    // -----------------------------
+    function SupervisorView({tasks,setTasks,events,setEvents,eventOutlets,setEventOutlets,tickets,setTickets,taskFactory}){
+      const [modal,setModal]=useState(null);
+      const [filterRest,setFilterRest]=useState("all");
+      const [filterUser,setFilterUser]=useState("all");
+
+      const today=todayISO();
+      const current=events.filter(e=> e.start<=today && today<=e.end);
+      const past=events.filter(e=> e.end<today);
+      const future=events.filter(e=> e.start>today);
+
+      const openPre=(ev)=> setModal({ev,type:"pre",remembered:(eventOutlets||{})[ev.id]||[],defaultDate:ev.start});
+      const openPost=(ev)=>{const d=new Date(ev.end); d.setDate(d.getDate()+1); setModal({ev,type:"post",remembered:(eventOutlets||{})[ev.id]||[],defaultDate:d.toISOString().slice(0,10)});};
+      const savePlan=({date,level,outlets,assignees})=>{
+        const {ev,type}=modal;
+        setEventOutlets(prev=> ({...prev, [ev.id]: outlets}));
+        const kind= type==="pre" ? "Vorreinigung" : "Nachreinigung";
+        const newTasks = (outlets||[]).map(rid=> taskFactory({date,restId:rid,level,assignees,kind}));
+        setTasks([...newTasks, ...tasks]);
+        setModal(null);
+        alert(`${newTasks.length} Aufgaben erstellt (${kind})`);
+      };
+
+      const deleteTask = (id)=> setTasks(tasks.filter(t=>t.id!==id));
+
+      const addTicket=(data)=>{
+        const ticket={ id:"U"+Date.now(), date: todayISO(), status:"Offen", ...data };
+        setTickets([ticket, ...tickets]);
+      };
+      const closeTicket=(id)=> setTickets(tickets.map(t=> t.id===id? {...t, status:"Geschlossen"} : t));
+
+      const filteredTasks = (filterRest==='all'? tasks : tasks.filter(t=> String(t.restId)===String(filterRest)))
+        .filter(t=> filterUser==='all' ? true : (t.assignees||[]).includes(filterUser));
+
+      return (
+        <div className="grid md:grid-cols-3 gap-4">
+          {/* Eventos */}
+          <EventList events={current} title="Im Moment" color="green" onPlanPost={openPost}/>
+          <EventList events={past} title="Vergangenheit" color="gray" onPlanPost={openPost}/>
+          <EventList events={future} title="Zukunft" color="yellow" onPlanPre={openPre}/>
+          {modal && <PlanModal {...modal} onClose={()=>setModal(null)} onSave={savePlan}/>}
+
+          {/* Tickets (izquierda) */}
+          <Card className="md:col-span-2">
+            <div className="font-semibold mb-2">Notfallauftrag (Ticket erstellen)</div>
+            <TicketForm onSubmit={addTicket}/>
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <div className="text-sm font-semibold mb-1">Tickets offen</div>
+                <div className="grid gap-2 max-h-64 overflow-auto">
+                  {tickets.filter(t=>t.status!=="Geschlossen").map(t=>(
+                    <div key={t.id} className="border rounded-xl p-2 flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium">{RESTS.find(r=>r.id===t.restaurantId)?.name}</div>
+                        <div className="text-xs text-gray-500">{t.date} · {t.priority}</div>
+                        <div className="text-xs">{t.reason}</div>
+                      </div>
+                      <Button className="bg-green-600 text-white" onClick={()=>closeTicket(t.id)}>Erledigt</Button>
+                    </div>
+                  ))}
+                  {tickets.filter(t=>t.status!=="Geschlossen").length===0 && <div className="text-xs text-gray-500">Keine offenen Tickets</div>}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-semibold mb-1">Tickets abgeschlossen</div>
+                <div className="grid gap-2 max-h-64 overflow-auto">
+                  {tickets.filter(t=>t.status==="Geschlossen").map(t=>(
+                    <div key={t.id} className="border rounded-xl p-2">
+                      <div className="text-sm font-medium">{RESTS.find(r=>r.id===t.restaurantId)?.name}</div>
+                      <div className="text-xs text-gray-500">{t.date} · {t.priority}</div>
+                      <div className="text-xs">{t.reason}</div>
+                    </div>
+                  ))}
+                  {tickets.filter(t=>t.status==="Geschlossen").length===0 && <div className="text-xs text-gray-500">Kein Verlauf</div>}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Lista de tareas (derecha) */}
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold">Aufgaben</div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs">Outlet</label>
+                <select className="border rounded px-2 py-1" value={filterRest} onChange={e=>setFilterRest(e.target.value)}>
+                  <option value="all">Alle</option>
+                  {RESTS.map(r=> (<option key={r.id} value={r.id}>{r.name}</option>))}
+                </select>
+                <label className="text-xs">Mitarbeiter</label>
+                <select className="border rounded px-2 py-1" value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
+                  <option value="all">Alle</option>
+                  {USERS.filter(u=>u.role!=="Supervisor").map(u=> (<option key={u.user} value={u.user}>{u.name}</option>))}
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-2 max-h-[28rem] overflow-auto">
+              {filteredTasks.map(t=>(
+                <div key={t.id} className="border rounded-xl p-3 grid gap-1">
+                  <div className="font-medium">{RESTS.find(r=>r.id===t.restId)?.name}</div>
+                  <div className="text-xs text-gray-500">{t.title} · {t.date} · {t.kind||"Betrieb"} · {t.level||"Normal"}</div>
+                  <div className="text-xs">Mitarbeiter: {(t.assignees||[]).map(u=> (USERS.find(x=>x.user===u)?.name || u)).join(", ") || "((nicht zugewiesen))"}</div>
+                  <div className="flex items-center justify-between">
+                    <span className={cls("text-xs px-2 py-1 rounded-full border", t.status==="Erledigt"?"bg-green-50 border-green-300":"bg-yellow-50 border-yellow-300")}>{t.status}</span>
+                    <Button onClick={()=>deleteTask(t.id)}>Löschen</Button>
+                  </div>
+                </div>
+              ))}
+              {filteredTasks.length===0 && <div className="text-xs text-gray-500">Keine Aufgaben</div>}
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    function EventList({events,title,color,onPlanPre,onPlanPost}){
+      const badge = color==='green'?'bg-green-600': color==='yellow'?'bg-yellow-500':'bg-gray-400';
+      if(events.length===0) return null;
+      return (
+        <Card className="md:col-span-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-semibold">{title}</div>
+            <div className={"w-3 h-3 rounded-full "+badge}></div>
+          </div>
+          <div className="grid gap-2">
+            {events.map(ev=>(
+              <div key={ev.id} className="border rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{ev.name}</div>
+                  <div className="text-xs text-gray-500">{ev.start} → {ev.end}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {onPlanPre && <Button onClick={()=>onPlanPre(ev)}>Vorreinigung planen</Button>}
+                  {onPlanPost && <Button className="bg-gray-800 text-white" onClick={()=>onPlanPost(ev)}>Nachreinigung planen</Button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      );
+    }
+
+    function PlanModal({ev,type,remembered,defaultDate,onClose,onSave}){
+      const [date,setDate]=useState(defaultDate||todayISO());
+      const [level,setLevel]=useState("Normal");
+      const [sel,setSel]=useState(()=> (remembered?.map(String)||[]));
+      const [assignees,setAssignees]=useState([]);
+      const toggleSel=(id)=> setSel(s=> s.includes(String(id))? s.filter(x=>x!==String(id)) : [...s,String(id)]);
+      const toggleA=(u)=> setAssignees(a=> a.includes(u)? a.filter(x=>x!==u) : [...a,u]);
+      return (
+        <div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50">
+          <Card className="w-full max-w-2xl">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold">{type==='pre'?'Vorreinigung':'Nachreinigung'} · {ev.name}</div>
+              <button onClick={onClose} className="text-xl">×</button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs">Datum</label>
+                <Input type="date" value={date} onChange={e=>setDate(e.target.value)}/>
+              </div>
+              <div>
+                <label className="text-xs">Level</label>
+                <Select value={level} onChange={e=>setLevel(e.target.value)} options={[
+                  {label:"Normal", value:"Normal"},
+                  {label:"Rápida", value:"Rápida"},
+                  {label:"Profunda", value:"Profunda"},
+                ]}/>
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs mb-1">Outlets wählen</div>
+                <div className="grid md:grid-cols-2 gap-2 max-h-56 overflow-auto border rounded-xl p-2">
+                  {RESTS.map(r=>(
+                    <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input type="checkbox" checked={sel.includes(String(r.id))} onChange={()=>toggleSel(r.id)}/>
+                      <span>{r.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Diese Auswahl wird für dieses Event gespeichert.</div>
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs mb-1">Mitarbeiter auswählen</div>
+                <div className="flex flex-wrap gap-2">
+                  {USERS.filter(u=>u.role!=="Supervisor").map(u=>(
+                    <button key={u.user} onClick={()=>toggleA(u.user)} className={cls("text-xs px-2 py-1 rounded-full border", (assignees||[]).includes(u.user)?"bg-gray-800 text-white":"")}>+ {u.name}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <Button onClick={onClose}>Abbrechen</Button>
+              <Button className="bg-gray-800 text-white" onClick={()=>onSave({date,level,outlets:sel.map(Number),assignees})}>Aufgaben erstellen</Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    function TicketForm({onSubmit}){
+      const [restaurantId,setRestaurantId]=useState(String(RESTS[0].id));
+      const [priority,setPriority]=useState("Mittel");
+      const [reason,setReason]=useState("");
+      return (
+        <div className="grid md:grid-cols-4 gap-2">
+          <div>
+            <label className="text-xs">Restaurant</label>
+            <select className="border rounded px-2 py-2 w-full" value={restaurantId} onChange={e=>setRestaurantId(e.target.value)}>
+              {RESTS.map(r=>(<option key={r.id} value={r.id}>{r.name}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs">Priorität</label>
+            <select className="border rounded px-2 py-2 w-full" value={priority} onChange={e=>setPriority(e.target.value)}>
+              <option>Hoch</option>
+              <option>Mittel</option>
+              <option>Niedrig</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs">Grund</label>
+            <Input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Beschreibung..."/>
+          </div>
+          <div className="md:col-span-4 text-right">
+            <Button className="bg-gray-800 text-white" onClick={()=>{
+              if(!reason.trim()) { alert("Grund eingeben"); return; }
+              onSubmit({restaurantId:Number(restaurantId), priority, reason});
+              setReason("");
+            }}>Ticket erstellen</Button>
+          </div>
+        </div>
+      );
+    }
+
+    // -----------------------------
+    // Vista Empleado
+    // -----------------------------
+    function EmployeeView({auth,tasks,setTasks}){
+      const my=tasks.filter(t=> (t.assignees||[]).includes(auth.user));
+      const [selected,setSelected]=useState(null);
+
+      const setField=(task,patch)=> setTasks(tasks.map(t=> t.id===task.id? {...t,...patch}: t));
+      const toggleCheck=(task,idx)=> setTasks(tasks.map(t=> t.id===task.id? {...t, checklist: t.checklist.map((c,i)=> i===idx? {...c,done:!c.done}: c)}: t));
+      const handlePhoto=(task,idx,which,file)=>{
+        if(!file) return;
+        const reader=new FileReader();
+        reader.onload=(e)=>{
+          const url=e.target.result;
+          setTasks(tasks.map(t=> t.id!==task.id? t : ({
+            ...t,
+            checklist: t.checklist.map((c,i)=> i===idx? {...c, [which==='before'?'photoBeforeUrl':'photoAfterUrl']: url} : c)
+          })));
+        };
+        reader.readAsDataURL(file);
+      };
+      const clearPhoto=(task,idx,which)=> setTasks(tasks.map(t=> t.id!==task.id? t : ({
+        ...t, checklist: t.checklist.map((c,i)=> i===idx? {...c, [which==='before'?'photoBeforeUrl':'photoAfterUrl']: undefined} : c)
+      })));
+      const markDone=(task)=> setTasks(tasks.map(t=> t.id===task.id? {...t, status:"Erledigt"}: t));
+
+      return (
+        <div className="grid gap-6">
+          <Card>
+            <div className="font-semibold mb-2">Meine Aufgaben</div>
+            <div className="grid gap-2">
+              {my.length===0 && <div className="text-sm text-gray-500">Keine Aufgaben</div>}
+              {my.map(t=>(
+                <div key={t.id} className="border rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{t.title}</div>
+                    <div className="text-xs text-gray-500">{t.date} · {t.kind||"Betrieb"} · {t.level||"Normal"}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={()=>setSelected(t)}>Öffnen</Button>
+                    <Button className="bg-green-600 text-white" onClick={()=>markDone(t)}>Fertig</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {selected && (
+            <Card>
+              <div className="font-semibold">{selected.title}</div>
+              <div className="text-xs text-gray-500 mb-2">{RESTS.find(r=>r.id===selected.restId)?.name} · {selected.date} · {selected.level}</div>
+
+              <div className="grid md:grid-cols-3 gap-2 mb-2">
+                <div><label className="text-xs">Datum</label><Input type="date" value={selected.date||""} onChange={e=>setField(selected,{date:e.target.value})}/></div>
+                <div><label className="text-xs">Startzeit</label><Input type="time" value={selected.timeStart||""} onChange={e=>setField(selected,{timeStart:e.target.value})}/></div>
+                <div><label className="text-xs">Endzeit</label><Input type="time" value={selected.timeEnd||""} onChange={e=>setField(selected,{timeEnd:e.target.value})}/></div>
+              </div>
+
+              <div className="mt-2 grid gap-2">
+                {selected.checklist.map((c,i)=>(
+                  <div key={i} className="flex items-center justify-between border rounded-xl p-2">
+                    <label className="text-sm flex-1">{c.txt}</label>
+                    <div className="flex items-center gap-2">
+                      {c.photoBeforeUrl && (<div className="relative"><img src={c.photoBeforeUrl} alt="vorher" className="h-10 w-10 object-cover rounded"/><button className="absolute -top-2 -right-2 bg-white border rounded-full text-xs px-1" onClick={()=>clearPhoto(selected,i,'before')}>✕</button></div>)}
+                      <input type="file" accept="image/*" capture="environment" onChange={e=>handlePhoto(selected,i,'before', e.target.files?.[0])}/>
+                      {c.photoAfterUrl && (<div className="relative"><img src={c.photoAfterUrl} alt="nachher" className="h-10 w-10 object-cover rounded"/><button className="absolute -top-2 -right-2 bg-white border rounded-full text-xs px-1" onClick={()=>clearPhoto(selected,i,'after')}>✕</button></div>)}
+                      <input type="file" accept="image/*" capture="environment" onChange={e=>handlePhoto(selected,i,'after', e.target.files?.[0])}/>
+                      <input type="checkbox" checked={!!c.done} onChange={()=>toggleCheck(selected,i)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    // -----------------------------
+    // Export de datos (CSV)
+    // -----------------------------
+    function DataModal({tasks,onClose}){
+      const [filterRest,setFilterRest]=useState("all");
+      const [filterUser,setFilterUser]=useState("all");
+      const [from,setFrom]=useState(""); const [to,setTo]=useState("");
+
+      const exportCSV=()=>{
+        const inRange=(d)=>{ if(from && d<from) return false; if(to && d>to) return false; return true; };
+        const filtered = tasks.filter(t=>
+          (filterRest==='all'||String(t.restId)===String(filterRest)) &&
+          (filterUser==='all'||(t.assignees||[]).includes(filterUser)) &&
+          inRange(t.date)
+        );
+        const cell=(s)=>'"'+ String(s??"").replaceAll('"',"''") + '"';
+        const header="Datum,Startzeit,Endzeit,Mitarbeiter,Ort,Aktivität,ChecklistErledigt";
+        const rows = filtered.map(t=>{
+          const mit=(t.assignees||[]).map(u=> (USERS.find(x=>x.user===u)?.name||u)).join("; ");
+          const ort=RESTS.find(r=>r.id===t.restId)?.name||"";
+          const aktiv=t.title;
+          const done=(t.checklist||[]).filter(c=>c.done).map(c=>c.txt).join(";");
+          return [t.date,t.timeStart||"",t.timeEnd||"",cell(mit),cell(ort),cell(aktiv),cell(done)].join(",");
+        });
+        const csv=[header, ...rows].join("\n");
+        const blob=new Blob([csv], {type:"text/csv;charset=utf-8;"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url; a.download=`backhouse_report_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/40 grid place-items-center p-4 z-50">
+          <Card className="w-full max-w-3xl">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold">Daten exportieren (CSV) · v4.4</div>
+              <button onClick={onClose} className="text-xl">×</button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-5">
+              <div><label className="text-xs">Von</label><Input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div>
+              <div><label className="text-xs">Bis</label><Input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div>
+              <div>
+                <label className="text-xs">Outlet</label>
+                <select className="border rounded px-2 py-2 w-full" value={filterRest} onChange={e=>setFilterRest(e.target.value)}>
+                  <option value="all">Alle</option>
+                  {RESTS.map(r=>(<option key={r.id} value={r.id}>{r.name}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs">Mitarbeiter</label>
+                <select className="border rounded px-2 py-2 w-full" value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
+                  <option value="all">Alle</option>
+                  {USERS.filter(u=>u.role!=="Supervisor").map(u=>(<option key={u.user} value={u.user}>{u.name}</option>))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button className="bg-gray-800 text-white w-full" onClick={exportCSV}>CSV herunterladen</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // -----------------------------
+    // Render & SW
+    // -----------------------------
     ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-    if("serviceWorker" in navigator){ window.addEventListener("load", ()=> navigator.serviceWorker.register("/public/sw.js?v=43")); }
+    if("serviceWorker" in navigator){
+      window.addEventListener("load", ()=> navigator.serviceWorker.register("/public/sw.js?v=44"));
+    }
   </script>
 </body>
 </html>
